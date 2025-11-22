@@ -2,6 +2,7 @@ import { Server as SocketServer } from 'socket.io';
 import prisma from '../config/database.js';
 import redis from '../config/redis.js';
 import { fetchCryptoPrices } from '../utils/coinGecko.js';
+import { sendAlert } from '../utils/emailService.js';
 
 let io: SocketServer;
 
@@ -65,6 +66,19 @@ const checkAlerts = async (prices: any[]) => {
           currentPrice,
           message: `${coin.name} is now ${alert.condition} $${alert.targetPrice}. Current price: $${currentPrice}`,
         });
+
+        if (alert.user?.email) {
+          try {
+            await sendAlert(alert.user.email, {
+              coinId: alert.coinId,
+              targetPrice: alert.targetPrice,
+              currentPrice,
+              condition: alert.condition,
+            });
+          } catch (err) {
+            console.error('Error sending alert email:', err);
+          }
+        }
       }
     }
   } catch (error) {
